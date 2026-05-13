@@ -8,6 +8,7 @@ import smtplib
 import urllib.parse
 import urllib.request
 import unicodedata
+from datetime import datetime, timedelta
 from email.message import EmailMessage
 
 from flask_cors import CORS 
@@ -33,6 +34,8 @@ USUARIOS = {
         "verified": True
     }
 }
+
+LOGIN_CODES = {}
 
     
 
@@ -92,6 +95,66 @@ def crear_usuario_no_verificado(email, password):
         'verification_code': codigo
     }
     return codigo
+
+
+def guardar_codigo_login(email):
+    codigo = generar_codigo_verificacion()
+    expiracion = datetime.utcnow() + timedelta(minutes=10)
+    LOGIN_CODES[email] = {
+        'code': codigo,
+        'expires_at': expiracion
+    }
+    return codigo
+
+
+def enviar_correo_codigo_login(destinatario, codigo):
+    if not EMAIL_SENDER or not EMAIL_PASSWORD:
+        raise RuntimeError('No hay credenciales SMTP configuradas.')
+
+    mensaje = EmailMessage()
+    mensaje['Subject'] = 'Código temporal de acceso MotoPower'
+    mensaje['From'] = EMAIL_SENDER
+    mensaje['To'] = destinatario
+    mensaje.set_content(
+        f"""Hola,
+
+Has solicitado iniciar sesión en MotoPower.
+
+Tu código temporal de acceso es: {codigo}
+
+Este código es válido por 10 minutos.
+
+Si no fuiste tú, ignora este mensaje.
+
+Saludos,
+MotoPower
+"""
+    )
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        smtp.send_message(mensaje)
+
+
+
+def validar_codigo_login(email, codigo):
+    if not email or not codigo:
+        return False
+
+    datos = LOGIN_CODES.get(email)
+    if not datos:
+        return False
+
+    if datos.get('expires_at') < datetime.utcnow():
+        LOGIN_CODES.pop(email, None)
+        return False
+
+    if str(datos.get('code')) != str(codigo).strip():
+        return False
+
+    LOGIN_CODES.pop(email, None)
+    return True
 
 # ==========================================================
 # CHATBOT
@@ -395,12 +458,71 @@ def login_usuario():
 
     role = USUARIOS[email]["role"]
 
+    try:
+        codigo = guardar_codigo_login(email)
+        enviar_correo_codigo_login(email, codigo)
+    except Exception as error:
+        return jsonify({"mensaje": "No se pudo enviar el código de acceso temporal.", "error": str(error)}), 500
+
+    return jsonify({
+        "mensaje": "Se envió un código temporal a tu correo. Ingresa el código para completar el inicio de sesión.",
+        "requiresVerification": True,
+        "usuario": email,
+        "role": role
+    }), 200
+
+
+@app.route('/api/login-verify-code', methods=['POST'])
+def verificar_login_codigo():
+    try:
+        datos = request.get_json()
+    except Exception:
+        return jsonify({"mensaje": "Error en la petición: Asegúrate de que estás enviando JSON válido."}), 400
+
+    if not datos or 'email' not in datos or 'code' not in datos:
+        return jsonify({"mensaje": "Email y código son requeridos."}), 400
+
+    email = datos['email'].strip().lower()
+    codigo = str(datos['code']).strip()
+
+    if email not in USUARIOS:
+        return jsonify({"mensaje": "Usuario no encontrado."}), 404
+
+    if not validar_codigo_login(email, codigo):
+        return jsonify({"mensaje": "Código de acceso inválido o caducado."}), 400
+
+    role = USUARIOS[email]["role"]
     return jsonify({
         "mensaje": "Inicio de sesión exitoso",
         "token": f"fake_jwt_{email}_hash",
         "usuario": email,
         "role": role
     }), 200
+
+
+@app.route('/api/login-resend-code', methods=['POST'])
+def reenviar_codigo_login():
+    try:
+        datos = request.get_json()
+    except Exception:
+        return jsonify({"mensaje": "Error en la petición: Asegúrate de que estás enviando JSON válido."}), 400
+
+    if not datos or 'email' not in datos:
+        return jsonify({"mensaje": "Email es requerido."}), 400
+
+    email = datos['email'].strip().lower()
+
+    if email not in USUARIOS:
+        return jsonify({"mensaje": "Usuario no encontrado."}), 404
+
+    try:
+        codigo = guardar_codigo_login(email)
+        enviar_correo_codigo_login(email, codigo)
+    except Exception as error:
+        return jsonify({"mensaje": "No se pudo reenviar el código de acceso.", "error": str(error)}), 500
+
+    return jsonify({"mensaje": "Código temporal reenviado a tu correo."}), 200
+
 
 @app.route('/api/inventario', methods=['GET'])
 def obtener_inventario():

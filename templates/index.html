@@ -134,6 +134,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button type="button" class="switch" id="go-register">¿No tienes cuenta? Regístrate</button>
     </div>
 
+    <div id="login-verification-panel" style="display:none; margin-top:1rem;">
+      <h3>Verificación de inicio de sesión</h3>
+      <p>Hemos enviado un código temporal a tu correo. Ingresa ese código aquí para continuar.</p>
+      <label for="login-code">Código temporal</label>
+      <input type="text" id="login-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*">
+      <button id="login-verify-btn" type="button">Verificar código</button>
+      <button id="login-resend-btn" type="button">Reenviar código</button>
+      <button id="login-back-btn" type="button">Volver</button>
+      <p id="login-verification-feedback" role="status" aria-live="polite" class="feedback"></p>
+    </div>
+
     <!-- REGISTRO -->
     <div id="register-panel" style="display:none;">
       <h2>Registrarse</h2>
@@ -599,6 +610,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     let loginRecaptchaId = null;
     let registerRecaptchaId = null;
+    let pendingLoginEmail = '';
 
     function onRecaptchaLoad() {
       if (document.getElementById('login-recaptcha')) {
@@ -755,72 +767,161 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
 
     async function manejarLogin(event) {
-  event.preventDefault();
+      event.preventDefault();
 
-  const url = `${API_BASE_URL}/login`;
-  const feedback = document.getElementById('login-feedback');
+      const url = `${API_BASE_URL}/login`;
+      const feedback = document.getElementById('login-feedback');
 
-  const recaptchaToken = getRecaptchaResponse(loginRecaptchaId);
-  if (!recaptchaToken) {
-    feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
-    feedback.style.color = 'red';
-    return;
-  }
+      const recaptchaToken = getRecaptchaResponse(loginRecaptchaId);
+      if (!recaptchaToken) {
+        feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
+        feedback.style.color = 'red';
+        return;
+      }
 
-  const datosLogin = {
-    email: document.getElementById('login-email').value.trim(),
-    password: document.getElementById('login-password').value.trim(),
-    recaptchaToken
-  };
+      const datosLogin = {
+        email: document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-password').value.trim(),
+        recaptchaToken
+      };
 
-  feedback.textContent = 'Verificando...';
-  feedback.style.color = 'gray';
+      feedback.textContent = 'Verificando...';
+      feedback.style.color = 'gray';
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datosLogin)
-    });
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datosLogin)
+        });
 
-    const resultado = await response.json();
-    console.log("LOGIN BACKEND RESPONSE:", resultado);
+        const resultado = await response.json();
+        console.log("LOGIN BACKEND RESPONSE:", resultado);
 
-    if (response.ok && resultado.token) {
-      feedback.textContent = '¡Inicio de sesión exitoso!';
-      feedback.style.color = 'green';
+        if (response.ok && resultado.requiresVerification) {
+          pendingLoginEmail = datosLogin.email;
+          document.getElementById('login-panel').style.display = 'none';
+          document.getElementById('login-verification-panel').style.display = 'block';
+          document.getElementById('login-verification-feedback').textContent = resultado.mensaje;
+          document.getElementById('login-verification-feedback').style.color = 'green';
+          return;
+        }
 
-      // Guardar token
-      localStorage.setItem('userToken', resultado.token);
+        if (response.ok && resultado.token) {
+          feedback.textContent = '¡Inicio de sesión exitoso!';
+          feedback.style.color = 'green';
 
-      // Si el backend no maneja roles → usuario normal
-      localStorage.setItem('userRole', resultado.role || 'user');
-      localStorage.setItem('userEmail', resultado.usuario);
+          localStorage.setItem('userToken', resultado.token);
+          localStorage.setItem('userRole', resultado.role || 'user');
+          localStorage.setItem('userEmail', resultado.usuario);
 
-      verificarEstadoLogin();
-      actualizarEstadoUI();
+          verificarEstadoLogin();
+          actualizarEstadoUI();
 
-      setTimeout(() => {
-        document.getElementById('auth-modal').classList.remove('active');
-        feedback.textContent = '';
-        document.getElementById('login-password').value = '';
-      },800);
+          setTimeout(() => {
+            document.getElementById('auth-modal').classList.remove('active');
+            feedback.textContent = '';
+            document.getElementById('login-password').value = '';
+          }, 800);
+        } else {
+          feedback.textContent = resultado.mensaje || 'Credenciales inválidas';
+          feedback.style.color = 'red';
+        }
 
-    } else {
-      feedback.textContent = resultado.mensaje || 'Credenciales inválidas';
-      feedback.style.color = 'red';
+      } catch (error) {
+        console.error('Error de conexión:', error);
+        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.style.color = 'red';
+      }
     }
 
-  } catch (error) {
-    console.error('Error de conexión:', error);
-    feedback.textContent = 'Error de conexión con el servidor';
-    feedback.style.color = 'red';
-  }
-  
+    async function manejarLoginVerificacion(event) {
+      event.preventDefault();
 
-}
+      const email = pendingLoginEmail || document.getElementById('login-email').value.trim().toLowerCase();
+      const code = document.getElementById('login-code').value.trim();
+      const feedback = document.getElementById('login-verification-feedback');
 
-        
+      if (!email || !code) {
+        feedback.textContent = 'Ingresa el código temporal enviado a tu correo.';
+        feedback.style.color = 'red';
+        return;
+      }
+
+      feedback.textContent = 'Verificando código...';
+      feedback.style.color = 'gray';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/login-verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+
+        const resultado = await response.json();
+
+        if (response.ok && resultado.token) {
+          feedback.textContent = '¡Inicio de sesión completado!';
+          feedback.style.color = 'green';
+
+          localStorage.setItem('userToken', resultado.token);
+          localStorage.setItem('userRole', resultado.role || 'user');
+          localStorage.setItem('userEmail', resultado.usuario);
+
+          verificarEstadoLogin();
+          actualizarEstadoUI();
+
+          setTimeout(() => {
+            document.getElementById('auth-modal').classList.remove('active');
+            document.getElementById('login-verification-feedback').textContent = '';
+            document.getElementById('login-code').value = '';
+            document.getElementById('login-verification-panel').style.display = 'none';
+            document.getElementById('login-panel').style.display = 'block';
+          }, 800);
+        } else {
+          feedback.textContent = resultado.mensaje || 'Código inválido';
+          feedback.style.color = 'red';
+        }
+      } catch (error) {
+        console.error('Error de conexión durante verificación:', error);
+        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.style.color = 'red';
+      }
+    }
+
+    async function reenviarCodigoLogin(event) {
+      event.preventDefault();
+      const email = pendingLoginEmail || document.getElementById('login-email').value.trim().toLowerCase();
+      const feedback = document.getElementById('login-verification-feedback');
+
+      if (!email) {
+        feedback.textContent = 'No se encontró el correo para reenviar el código.';
+        feedback.style.color = 'red';
+        return;
+      }
+
+      feedback.textContent = 'Reenviando código...';
+      feedback.style.color = 'gray';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/login-resend-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const resultado = await response.json();
+        feedback.textContent = resultado.mensaje;
+        feedback.style.color = response.ok ? 'green' : 'red';
+      } catch (error) {
+        console.error('Error al reenviar código:', error);
+        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.style.color = 'red';
+      }
+    }
+
+
+    
     
     // ----------------------------------------------------------------------
     // FUNCIONES DE INVENTARIO Y CONTACTO
@@ -981,6 +1082,14 @@ document.getElementById('logout-btn').onclick = () => {
 
   // BOTONES DEL MODAL
   document.getElementById('login-btn').addEventListener('click', manejarLogin);
+  document.getElementById('login-verify-btn').addEventListener('click', manejarLoginVerificacion);
+  document.getElementById('login-resend-btn').addEventListener('click', reenviarCodigoLogin);
+  document.getElementById('login-back-btn').addEventListener('click', () => {
+    document.getElementById('login-verification-panel').style.display = 'none';
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('login-verification-feedback').textContent = '';
+    document.getElementById('login-code').value = '';
+  });
   document.getElementById('register-btn').addEventListener('click', manejarRegistro);
   document.getElementById('verify-btn').addEventListener('click', manejarVerificacion);
   document.getElementById('resend-code-btn').addEventListener('click', reenviarCodigo);

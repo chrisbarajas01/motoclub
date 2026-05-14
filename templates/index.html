@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PCHHXR2S');</script>
+<!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotoPower - Tienda de Motos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+  <link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet/dist/leaflet.css"
+/>
+  <link href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap"
+        rel="stylesheet">
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script src="https://www.paypal.com/sdk/js?client-id=AXt0v99cTerIqmECOrT_Rp15i5-uK8Fh4YLIriKTAWFSEGWFYrRTbX98fy-MxGhPq1fj8F1sfFEzBJ20&currency=MXN"></script>
+<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+
+  <style>
+    
+    /* Estilos generales (asumiendo que 'estilos.css' existe) */
+    .slides { display: flex; transition: transform 0.5s ease-in-out; }
+    .slides img { width: 100%; flex-shrink: 0; }
+  </style>
+</head>
+
+<body>
+  <!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PCHHXR2S"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+<div id="carrito-panel" class="carrito-panel">
+  <h3>🛒 Tu carrito</h3>
+  <ul id="lista-carrito"></ul>
+  <p id="total-carrito"></p>
+  <button onclick="vaciarCarrito()">Vaciar</button>
+  <button class="btn-pagar" onclick="abrirCheckout()">Pagar</button>
+</div>
+
+<header>
+  <h1 class="sr-only">MotoPower - Tienda de Motos</h1>
+    <div class="logo">
+  <div class="logo-curvo">
+    <svg viewBox="0 0 800 400">
+      <defs>
+        <path id="curva-arco"
+              d="M 100 280 Q 400 40 700 280" />
+      </defs>
+
+      <text text-anchor="middle">
+        <textPath href="#curva-arco" startOffset="50%">
+          MOTOPOWER
+        </textPath>
+      </text>
+    </svg>
+  </div>
+
+  <img src="https://static.vecteezy.com/system/resources/thumbnails/026/972/734/small/black-motorcycle-club-logo-isolated-png.png"
+       alt="Logo MotoPower">
+</div>
+    <p>Velocidad, potencia y estilo sobre dos ruedas </p>
+   
+    <button class="btn-carrito" id="btn-carrito" onclick="toggleCarrito()">
+
+  🛒 Carrito (<span id="contador-carrito">0</span>)
+</button>
+
+</header>
+
+  <nav class="botones">
+ <button onclick="abrirCatalogo()" aria-haspopup="dialog" aria-controls="catalogo">Catálogo</button>
+    <button onclick="window.location.href='#servicios'">Servicios</button>
+    <button onclick="abrirQuienes()" aria-haspopup="dialog" aria-controls="quienes">Quiénes somos</button>
+    <button id="btn-inventario" 
+        onclick="window.location.href='#inventario'"
+        style="display:none;">
+  Inventario
+</button>   
+    <button onclick="abrirContacto()" aria-haspopup="dialog" aria-controls="contacto">Contacto</button>
+    <button id="btn-chat-toggle" type="button" aria-haspopup="dialog" aria-controls="chat-panel">Chat con asistente</button>
+    <div class="auth-container">
+  <button id="btn-auth" type="button">
+    <span id="auth-icon">🔐</span>
+    <span id="auth-text">Iniciar sesión</span>
+  </button>
+  <button id="narrador-btn" type="button" aria-pressed="false" class="btn-narrador">Activar narrador</button>
+
+  <div id="profile-menu" class="profile-menu">
+    <button type="button" class="profile-item">👤 Perfil</button>
+    <button type="button" class="profile-item" id="logout-btn">🚪 Cerrar sesión</button>
+  </div>
+</div>
+
+  </nav>
+  
+<div id="chat-panel" class="chat-panel" role="dialog" aria-labelledby="chat-title" aria-modal="false" aria-hidden="true" tabindex="-1">
+  <div class="chat-header">
+    <h2 id="chat-title">Asistente MotoPower</h2>
+    <button type="button" class="close-chat" id="close-chat" aria-label="Cerrar chat">✖</button>
+  </div>
+  <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+  <form id="chat-form" class="chat-form">
+    <label for="chat-input" class="sr-only">Mensaje al asistente</label>
+    <input id="chat-input" type="text" placeholder="Escribe tu pregunta..." aria-label="Escribe tu pregunta al asistente" autocomplete="off">
+    <button id="chat-send-btn" type="submit">Enviar</button>
+  </form>
+</div>
+
+<div id="auth-modal" role="dialog" aria-labelledby="auth-title" aria-modal="true" aria-hidden="true" tabindex="-1">
+  <div class="auth-panel">
+    <button type="button" class="close" id="close-auth" aria-label="Cerrar autenticación">✖</button>
+    <h2 id="auth-title" class="sr-only">Autenticación de usuario</h2>
+
+    <!-- LOGIN -->
+    <div id="login-panel">
+      <h2>Iniciar sesión</h2>
+      <label for="login-email">Correo electrónico</label>
+      <input type="email" id="login-email" required>
+      <label for="login-password">Contraseña</label>
+      <input type="password" id="login-password" required>
+      <div id="login-recaptcha"></div>
+      <button id="login-btn" type="button">Entrar</button>
+      <p id="login-feedback" role="status" aria-live="polite" class="feedback"></p>
+      <button type="button" class="switch" id="go-register">¿No tienes cuenta? Regístrate</button>
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="register-panel" style="display:none;">
+      <h2>Registrarse</h2>
+      <label for="register-email">Correo electrónico</label>
+      <input type="email" id="register-email" required>
+      <label for="register-password">Contraseña</label>
+      <input type="password" id="register-password" required>
+      <div id="register-recaptcha"></div>
+      <button id="register-btn" type="button">Crear cuenta</button>
+      <p id="register-feedback" role="status" aria-live="polite" class="feedback"></p>
+
+      <div id="verification-panel" style="display:none; margin-top:1rem;">
+        <h3>Verificar correo</h3>
+        <p>Ingresa el código que te enviamos al correo.</p>
+        <label for="verification-code">Código de verificación</label>
+        <input type="text" id="verification-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*">
+        <button id="verify-btn" type="button">Verificar cuenta</button>
+        <button id="resend-code-btn" type="button">Reenviar código</button>
+        <p id="verify-feedback" role="status" aria-live="polite" class="feedback"></p>
+      </div>
+
+      <button type="button" class="switch" id="go-login">¿Ya tienes cuenta? Inicia sesión</button>
+    </div>
+
+  </div>
+</div>
+
+
+<main id="main-content">
+  <section class="carrusel">
+    <div class="slides">
+     <img src="https://dhqlmcogwd1an.cloudfront.net/images/phocagallery/yamaha/yzf-r15/01-yamaha-yzf-r15-2022-estudio-azul-620.jpg" alt="Yamaha">
+
+      <img src="https://www.honda.mx/web/img/motorcycles/models/naked/cb650r/gallery/1.jpg" alt="Honda">
+      <img src="https://images.squarespace-cdn.com/content/v1/639bda5c64492137de0500b9/1671321053359-UM5XS07LCXP787EFH84H/1e0d7bb4-af05-44ac-bdaa-e986ce460e9e.jpg?format=1000w" alt="Kawasaki Z900">
+    </div>
+  </section>
+
+  <section id="catalogo" class="catalogo" role="dialog" aria-labelledby="catalogo-title" aria-modal="true" aria-hidden="true" tabindex="-1">
+     <button type="button" class="close-catalogo" onclick="cerrarCatalogo()" aria-label="Cerrar catálogo">✖</button>
+    <h2 id="catalogo-title">Catálogo de Motos</h2>
+    
+
+    <div class="productos">
+      <div class="tarjeta">
+        <img src="https://www.motorbikemag.es/wp-content/uploads/2024/10/Kawasaki-Z900-2025-estaticas3.jpg"width="800" height="200" alt="Z900">
+        <h3>Kawasaki Z900</h3>
+        <p>Motor de 948cc, 123 HP. Ideal para los amantes de la potencia.</p>
+       <button
+  onclick="agregarAlCarrito(
+    'Kawasaki Z900',
+    350000,
+    'https://www.motorbikemag.es/wp-content/uploads/2024/10/Kawasaki-Z900-2025-estaticas3.jpg'
+  )">
+  🛒 Comprar
+</button>
+<button onclick="abrirModal({
+  modelo: 'Kawasaki Z900',
+  marca: 'Kawasaki',
+  cilindraje: '948 cc',
+  disponibles: 5,
+  precio: 350000
+})">
+  🔍 Ver detalles
+</button>
+
+
+      </div>
+      <div class="tarjeta">
+        <img src="https://cdn.shopify.com/s/files/1/0066/0334/1924/files/moto-honda-CB650R-1_1024x1024.webp?v=1712321399"width="800" height="200" alt="CB650R">
+        <h3>Honda CB650R</h3>
+        <p>Motor 649cc, diseño naked agresivo y rendimiento confiable.</p>
+       <button
+  onclick="agregarAlCarrito(
+    'Honda CB650R',
+    320000,
+    'https://cdn.shopify.com/s/files/1/0066/0334/1924/files/moto-honda-CB650R-1_1024x1024.webp?v=1712321399'
+  )">
+  🛒 Comprar
+</button>
+<button onclick="abrirModal({
+  modelo: 'Honda CB650R',
+  marca: 'Honda',
+  cilindraje: '649 cc',
+  disponibles: 3,
+  precio: 320000
+})">
+  🔍 Ver detalles
+</button>
+
+
+
+      </div>
+      <div class="tarjeta">
+        <img src="https://autoshowtv.com.mx/wp-content/uploads/2024/11/YZF-R15-V4.jpg"width="800" height="200" alt="R15 V4">
+        <h3>Yamaha R15 V4</h3>
+        <p>Motor 155cc, ideal para ciudad con estilo deportivo.</p>
+       <button
+  onclick="agregarAlCarrito(
+    'Yamaha R15 V4',
+    85000,
+    'https://autoshowtv.com.mx/wp-content/uploads/2024/11/YZF-R15-V4.jpg'
+  )">
+  🛒 Comprar
+</button>
+<button onclick="abrirModal({
+  modelo: 'Yamaha R15 V4',
+  marca: 'Yamaha',
+  cilindraje: '155 cc',
+  disponibles: 8,
+  precio: 85000
+})">
+  🔍 Ver detalles
+</button>
+
+
+      </div>
+    </div>
+  </section>
+
+  <section id="servicios" class="servicios">
+    <h2>Servicios disponibles</h2>
+    <ul>
+      <li>🔧 Mantenimiento preventivo y correctivo</li>
+      <li>🧢 Venta de accesorios y equipo de protección</li>
+      <li>💳 Financiamiento flexible y seguros</li>
+      <li>🚚 Envíos a todo México</li>
+    </ul>
+  </section>
+  
+ 
+  <section id="inventario" class="inventario" style="display:none;">
+
+    <h2>Inventario Actual (Requiere Login)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Modelo</th>
+          <th>Marca</th>
+          <th>Cilindraje</th>
+          <th>Disponibles</th>
+          <th>Precio</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="inventario-body">
+        <tr><td colspan="5">Inicia sesión para ver el inventario.</td></tr>
+      </tbody>
+    </table>
+    <h3>Agregar / Editar moto</h3>
+
+<form id="form-moto">
+  <input type="hidden" id="moto-id">
+
+  <label for="modelo">Modelo</label>
+  <input type="text" id="modelo" placeholder="Modelo" required>
+  <label for="marca">Marca</label>
+  <input type="text" id="marca" placeholder="Marca" required>
+  <label for="cilindraje">Cilindraje</label>
+  <input type="text" id="cilindraje" placeholder="Cilindraje" required>
+  <label for="disponibles">Disponibles</label>
+  <input type="number" id="disponibles" placeholder="Disponibles" required>
+  <label for="precio">Precio</label>
+  <input type="number" id="precio" placeholder="Precio" required>
+
+  <button type="submit">Guardar</button>
+</form>
+
+<h2>Usuarios Registrados</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Rol</th>
+      <th>Acciones</th>
+
+    </tr>
+  </thead>
+  <tbody id="usuarios-body">
+    <tr>
+      <td colspan="2">Cargando usuarios...</td>
+      
+    </tr>
+  </tbody>
+</table>
+
+
+  </section>
+
+ <section id="contacto" class="contacto" role="dialog" aria-labelledby="contacto-title" aria-modal="true" aria-hidden="true" tabindex="-1">
+
+  <button type="button" class="close-contacto" onclick="cerrarContacto()" aria-label="Cerrar contacto">✖</button>
+
+  <form id="formulario-contacto">
+    <h2 id="contacto-title">Contáctanos</h2>
+
+    <label for="nombre">Nombre:</label>
+    <input type="text" id="nombre" required>
+
+    <label for="correo">Correo electrónico:</label>
+    <input type="email" id="correo" required>
+
+    <label for="mensaje">Mensaje:</label>
+    <textarea id="mensaje" rows="4" required></textarea>
+
+    <button type="submit">Enviar mensaje</button>
+    <p id="mensaje-feedback" role="status" aria-live="polite" style="margin-top: 10px;"></p>
+
+  </form>
+
+</section>
+
+<section id="quienes" class="contacto" role="dialog" aria-labelledby="quienes-title" aria-modal="true" aria-hidden="true" tabindex="-1">
+
+   <img src="C:\Users\User\Desktop\imagenpagina" alt="Nosotros" class="quienes-img">
+
+  <button type="button" class="close-contacto" onclick="cerrarQuienes()" aria-label="Cerrar quiénes somos">✖</button>
+
+  <div class="modal-contenido">
+
+    <h2 id="quienes-title">¿Quiénes somos?</h2>
+
+    <p style="margin-top:15px; line-height:1.6;">
+      Somos una empresa enfocada en la venta de motocicletas,
+      comprometida a brindar la mejor atención al cliente y a cada
+      usuario que visita nuestra plataforma.
+    </p>
+
+    <p style="margin-top:10px; line-height:1.6;">
+      En MotoPower tenemos la responsabilidad de ofrecer información
+      clara sobre nuestros productos, así como un catálogo amplio
+      que permita a nuestros clientes encontrar la motocicleta ideal
+      para su estilo de vida.
+    </p>
+
+    <p style="margin-top:10px; line-height:1.6;">
+      Nuestro objetivo es combinar velocidad, potencia y estilo,
+      brindando una experiencia de compra moderna, segura y confiable.
+    </p>
+
+  </div>
+
+</section>
+
+<section id="mapa-section">
+  <h2>Concesionarias cercanas</h2>
+  <div id="mapa" style="height: 400px; width: 100%; border-radius: 10px;" aria-label="Mapa de concesionarias cercanas"></div>
+</section>
+
+</main>
+
+<footer>
+    <p>&copy; 2025 MotoPower - Todos los derechos reservados</p>
+    <p>Síguenos en:
+      <a href="https://www.facebook.com/profile.php?id=61584828976426&rdid=XLlsZRvk7vxRDMHQ&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1NkGCsdMcc%2F#" target="_blank" rel="noopener noreferrer">Facebook</a> |
+      <a href="https://www.instagram.com/motp.ower?igsh=dTAwdm45aTRsNnBx" target="_blank" rel="noopener noreferrer">Instagram</a>
+    </p>
+</footer>
+
+<!-- MODAL CHECKOUT -->
+<div id="checkout-modal" class="checkout-modal" role="dialog" aria-labelledby="checkout-title" aria-modal="true" aria-hidden="true" tabindex="-1">
+  <div class="checkout-panel">
+
+    <h2 id="checkout-title">Checkout</h2>
+
+    <form id="checkout-form">
+      <label for="checkout-nombre">Nombre completo</label>
+      <input type="text" id="checkout-nombre" required>
+
+      <label for="checkout-correo">Correo electrónico</label>
+      <input type="email" id="checkout-correo" required>
+
+      <label for="checkout-direccion">Dirección</label>
+      <input type="text" id="checkout-direccion" required>
+
+      <label for="checkout-pago">Método de pago</label>
+      <select id="checkout-pago" required>
+        <option value="">Selecciona</option>
+        <option>Tarjeta</option>
+        <option>Transferencia</option>
+        <option>Efectivo</option>
+      </select>
+
+      <button type="submit" id="btn-confirmar">
+  Confirmar compra
+</button>
+
+<div id="paypal-button-container" style="margin-top:20px;"></div>
+
+    </form>
+
+    <button type="button" class="close-checkout" onclick="cerrarCheckout()" aria-label="Cerrar checkout">✖</button>
+
+    <form id="pago-form">
+      <div id="campos-pago"></div>
+
+      <button type="submit">
+        Pagar ahora
+      </button>
+    </form>
+
+    <button type="button" class="close-checkout" onclick="cerrarPago()" aria-label="Cerrar pago">✖</button>
+
+  </div>
+</div>
+
+<!-- MODAL RESULTADO -->
+<div id="resultado-modal" class="checkout-modal" role="dialog" aria-labelledby="resultado-texto" aria-modal="true" aria-hidden="true" tabindex="-1">
+  <div class="checkout-panel resultado">
+    <h2 id="resultado-texto" role="status" aria-live="assertive"></h2>
+</div>
+
+
+  <script>
+    
+    // URL de la API relativa para que el chat funcione desde el mismo backend
+    const API_BASE_URL = '/api';
+
+    let narratorEnabled = false;
+    let pendingVerificationEmail = null;
+    const synth = window.speechSynthesis;
+
+    function speak(text) {
+      if (!narratorEnabled || typeof synth === 'undefined') return;
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-ES';
+      utterance.rate = 1;
+      synth.speak(utterance);
+    }
+
+    function setNarrador(enabled) {
+      narratorEnabled = enabled;
+      const button = document.getElementById('narrador-btn');
+      if (button) {
+        button.setAttribute('aria-pressed', String(enabled));
+        button.textContent = enabled ? 'Desactivar narrador' : 'Activar narrador';
+      }
+      if (enabled) {
+        speak('Narrador activado. Usa los botones para escuchar la página.');
+      } else {
+        speak('Narrador desactivado.');
+      }
+    }
+
+    function toggleNarrador() {
+      setNarrador(!narratorEnabled);
+    }
+
+    function getAutoReadText(target) {
+      if (!target || !target.matches) return '';
+      if (target.matches('h1, h2, h3, h4, h5, h6, button, a')) {
+        return target.textContent.trim();
+      }
+      if (target.matches('input, textarea, select')) {
+        const label = target.id ? document.querySelector(`label[for="${target.id}"]`) : null;
+        const labelText = label ? label.textContent.trim() : '';
+        const placeholder = target.placeholder ? target.placeholder.trim() : '';
+        const type = target.type ? target.type.trim() : '';
+        if (target.matches('select')) {
+          return `${labelText}${labelText && target.value ? '. Opción seleccionada: ' + target.value : ''}`.trim();
+        }
+        if (type === 'submit' || type === 'button') {
+          return target.value || target.textContent || '';
+        }
+        return `${labelText}${placeholder ? '. ' + placeholder : ''}`.trim();
+      }
+      return '';
+    }
+
+    function handleFocusRead(event) {
+      if (!narratorEnabled) return;
+      const text = getAutoReadText(event.target);
+      if (text) {
+        speak(text);
+      }
+    }
+
+    async function enviarMensajeChat(mensaje) {
+      if (!mensaje || !mensaje.trim()) return;
+      const chatArea = document.getElementById('chat-messages');
+      const newUserMessage = document.createElement('div');
+      newUserMessage.className = 'chat-message user';
+      newUserMessage.textContent = `Tú: ${mensaje}`;
+      chatArea.appendChild(newUserMessage);
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      try {
+        const respuesta = await fetch(`${API_BASE_URL}/chat`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: mensaje})
+        });
+        const data = await respuesta.json();
+        const newBotMessage = document.createElement('div');
+        newBotMessage.className = 'chat-message bot';
+        newBotMessage.textContent = `Asistente: ${data.response || 'No recibí respuesta del servidor.'}`;
+        chatArea.appendChild(newBotMessage);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        if (narratorEnabled) speak(data.response || 'No recibí respuesta del servidor.');
+      } catch (error) {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'chat-message bot';
+        errorMessage.textContent = 'Error al conectar con el asistente. Intenta de nuevo.';
+        chatArea.appendChild(errorMessage);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        console.error('Error en chat:', error);
+      }
+    }
+
+    function toggleChatPanel() {
+      const panel = document.getElementById('chat-panel');
+      const isOpen = panel.classList.toggle('active');
+      panel.setAttribute('aria-hidden', String(!isOpen));
+      if (isOpen) {
+        document.getElementById('chat-input').focus();
+      }
+    }
+
+    function cerrarChat() {
+      const panel = document.getElementById('chat-panel');
+      panel.classList.remove('active');
+      panel.setAttribute('aria-hidden', 'true');
+      document.getElementById('btn-chat-toggle').focus();
+    }
+
+    // ----------------------------------------------------------------------
+    // FUNCIONES DE LOGIN Y REGISTRO
+    // ----------------------------------------------------------------------
+
+   function verificarEstadoLogin() {
+  const token = localStorage.getItem('userToken');
+  const role = localStorage.getItem('userRole');
+
+  if (token) {
+    if (role === 'admin') {
+      cargarInventario();
+      cargarUsuarios();
+    }
+    actualizarEstadoUI();
+  } else {
+    actualizarEstadoUI();
+  }
+
+  fetch(`${API_BASE_URL}/carrito`, {
+  headers: {
+    "X-User-Email": localStorage.getItem("userEmail")
+  }
+})
+.then(res => res.json())
+.then(data => {
+  if (Array.isArray(data)) {
+    carrito = data;
+  } else {
+    carrito = [];
+  }
+  actualizarCarrito();
+});
+
+
+}
+
+    let loginRecaptchaId = null;
+    let registerRecaptchaId = null;
+
+    function onRecaptchaLoad() {
+      if (document.getElementById('login-recaptcha')) {
+        loginRecaptchaId = grecaptcha.render('login-recaptcha', {
+          sitekey: '{{ recaptcha_site_key }}'
+        });
+      }
+      if (document.getElementById('register-recaptcha')) {
+        registerRecaptchaId = grecaptcha.render('register-recaptcha', {
+          sitekey: '{{ recaptcha_site_key }}'
+        });
+      }
+    }
+
+    function getRecaptchaResponse(widgetId) {
+      if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+        return grecaptcha.getResponse(widgetId);
+      }
+      return '';
+    }
+
+    function resetRecaptcha(widgetId) {
+      if (typeof grecaptcha !== 'undefined' && grecaptcha.reset && widgetId !== null) {
+        try {
+          grecaptcha.reset(widgetId);
+        } catch (error) {
+          console.warn('No fue posible resetear reCAPTCHA:', error);
+        }
+      }
+    }
+
+    function resetRecaptchaAll() {
+      resetRecaptcha(loginRecaptchaId);
+      resetRecaptcha(registerRecaptchaId);
+    }
+
+    async function manejarRegistro(event) {
+        event.preventDefault();
+
+        const url = `${API_BASE_URL}/register`;
+        const feedback = document.getElementById('register-feedback');
+        
+        const recaptchaToken = getRecaptchaResponse(registerRecaptchaId);
+        if (!recaptchaToken) {
+            feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
+            feedback.style.color = 'red';
+            return;
+        }
+
+        const datosRegistro = {
+            email: document.getElementById('register-email').value,
+            password: document.getElementById('register-password').value,
+            recaptchaToken
+        };
+
+        feedback.textContent = 'Registrando...';
+        feedback.style.color = 'gray';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datosRegistro)
+            });
+
+            const resultado = await response.json();
+            
+            feedback.textContent = resultado.mensaje;
+            feedback.style.color = response.ok ? 'green' : 'red';
+            
+            if (response.ok) {
+               const email = datosRegistro.email.trim().toLowerCase();
+               pendingVerificationEmail = email;
+               document.getElementById('register-email').value = '';
+               document.getElementById('register-password').value = '';
+               resetRecaptcha(registerRecaptchaId);
+               document.getElementById('verification-panel').style.display = 'block';
+               document.getElementById('verify-feedback').textContent = 'Te enviamos un código a tu correo. Úsalo para verificar tu cuenta.';
+               document.getElementById('verify-feedback').style.color = 'green';
+            }
+
+        } catch (error) {
+            console.error('Error de conexión al intentar registrar:', error);
+            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.style.color = 'red';
+        }
+    }
+
+    async function manejarVerificacion(event) {
+        event.preventDefault();
+        const email = pendingVerificationEmail || document.getElementById('register-email').value.trim().toLowerCase();
+        const code = document.getElementById('verification-code').value.trim();
+        const feedback = document.getElementById('verify-feedback');
+
+        if (!email || !code) {
+            feedback.textContent = 'Ingresa tu correo y el código de verificación.';
+            feedback.style.color = 'red';
+            return;
+        }
+
+        feedback.textContent = 'Verificando...';
+        feedback.style.color = 'gray';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/verify-email`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, code})
+            });
+
+            const resultado = await response.json();
+            feedback.textContent = resultado.mensaje;
+            feedback.style.color = response.ok ? 'green' : 'red';
+
+            if (response.ok) {
+                document.getElementById('verification-code').value = '';
+                document.getElementById('verification-panel').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error al verificar:', error);
+            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.style.color = 'red';
+        }
+    }
+
+    async function reenviarCodigo(event) {
+        event.preventDefault();
+        const email = pendingVerificationEmail || document.getElementById('register-email').value.trim().toLowerCase();
+        const feedback = document.getElementById('verify-feedback');
+
+        if (!email) {
+            feedback.textContent = 'Ingresa tu correo para reenviar el código.';
+            feedback.style.color = 'red';
+            return;
+        }
+
+        feedback.textContent = 'Reenviando código...';
+        feedback.style.color = 'gray';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/resend-verification`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email})
+            });
+            const resultado = await response.json();
+            feedback.textContent = resultado.mensaje;
+            feedback.style.color = response.ok ? 'green' : 'red';
+        } catch (error) {
+            console.error('Error al reenviar código:', error);
+            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.style.color = 'red';
+        }
+    }
+
+    async function manejarLogin(event) {
+  event.preventDefault();
+
+  const url = `${API_BASE_URL}/login`;
+  const feedback = document.getElementById('login-feedback');
+
+  const recaptchaToken = getRecaptchaResponse(loginRecaptchaId);
+  if (!recaptchaToken) {
+    feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
+    feedback.style.color = 'red';
+    return;
+  }
+
+  const datosLogin = {
+    email: document.getElementById('login-email').value.trim(),
+    password: document.getElementById('login-password').value.trim(),
+    recaptchaToken
+  };
+
+  feedback.textContent = 'Verificando...';
+  feedback.style.color = 'gray';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datosLogin)
+    });
+
+    const resultado = await response.json();
+    console.log("LOGIN BACKEND RESPONSE:", resultado);
+
+    if (response.ok && resultado.token) {
+      feedback.textContent = '¡Inicio de sesión exitoso!';
+      feedback.style.color = 'green';
+
+      // Guardar token
+      localStorage.setItem('userToken', resultado.token);
+
+      // Si el backend no maneja roles → usuario normal
+      localStorage.setItem('userRole', resultado.role || 'user');
+      localStorage.setItem('userEmail', resultado.usuario);
+
+      verificarEstadoLogin();
+      actualizarEstadoUI();
+
+      setTimeout(() => {
+        document.getElementById('auth-modal').classList.remove('active');
+        feedback.textContent = '';
+        document.getElementById('login-password').value = '';
+      },800);
+
+    } else {
+      feedback.textContent = resultado.mensaje || 'Credenciales inválidas';
+      feedback.style.color = 'red';
+    }
+
+  } catch (error) {
+    console.error('Error de conexión:', error);
+    feedback.textContent = 'Error de conexión con el servidor';
+    feedback.style.color = 'red';
+  }
+  
+
+}
+
+        
+    
+    // ----------------------------------------------------------------------
+    // FUNCIONES DE INVENTARIO Y CONTACTO
+    // ----------------------------------------------------------------------
+
+    async function cargarInventario() {
+  const token = localStorage.getItem('userToken');
+  const role = localStorage.getItem('userRole');
+  const tablaBody = document.getElementById('inventario-body');
+
+  if (!tablaBody) return;
+
+  if (!token) {
+    tablaBody.innerHTML = `<tr><td colspan="5">Inicia sesión para ver el inventario.</td></tr>`;
+    return;
+  }
+
+  if (role !== 'admin') {
+    tablaBody.innerHTML = `<tr><td colspan="5">No tienes permisos para ver el inventario.</td></tr>`;
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/inventario`, {
+      headers: {
+        "X-User-Role": role
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const inventario = await response.json();
+    tablaBody.innerHTML = '';
+
+    inventario.forEach(moto => {
+      const row = tablaBody.insertRow();
+      row.insertCell(0).textContent = moto.modelo;
+      row.insertCell(1).textContent = moto.marca;
+      row.insertCell(2).textContent = moto.cilindraje;
+      row.insertCell(3).textContent = moto.disponibles;
+      row.insertCell(4).textContent = new Intl.NumberFormat(
+        'es-MX',
+        { style: 'currency', currency: 'MXN' }
+      ).format(moto.precio);
+      const acciones = row.insertCell(5);
+acciones.innerHTML = `
+  <button onclick="editarMoto(${moto.id})">✏️</button>
+  <button onclick="eliminarMoto(${moto.id})">🗑️</button>
+`;
+    });
+
+  } catch (error) {
+    console.error('Error al cargar inventario:', error);
+    tablaBody.innerHTML =
+      `<tr><td colspan="5">Error al cargar inventario.</td></tr>`;
+  }
+}
+
+    
+    async function enviarFormularioContacto(event) {
+        event.preventDefault(); 
+
+        const url = `${API_BASE_URL}/contacto`;
+        const feedback = document.getElementById('mensaje-feedback');
+        
+        const datos = {
+            nombre: document.getElementById('nombre').value,
+            correo: document.getElementById('correo').value,
+            mensaje: document.getElementById('mensaje').value,
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            const resultado = await response.json();
+            
+            feedback.textContent = resultado.mensaje;
+            feedback.style.color = response.ok ? 'green' : 'red';
+
+            if (response.ok) {
+                document.getElementById('formulario-contacto').reset(); 
+            }
+
+        } catch (error) {
+            console.error('Error al enviar formulario:', error);
+            feedback.textContent = 'Hubo un error de conexión con el servidor.';
+            feedback.style.color = 'red';
+        }
+    }
+
+   function actualizarEstadoUI() {
+  const token = localStorage.getItem('userToken');
+  const role = localStorage.getItem('userRole');
+
+  const authIcon = document.getElementById('auth-icon');
+  const authText = document.getElementById('auth-text');
+  const inventario = document.getElementById('inventario');
+  const btnInventario = document.getElementById('btn-inventario');
+  const profileMenu = document.getElementById('profile-menu');
+  const botonCarrito = document.getElementById('btn-carrito');
+
+  if (token) {
+    authIcon.textContent = '👤';
+    authText.textContent = role === 'admin' ? 'Admin' : 'Usuario';
+
+    if (botonCarrito) botonCarrito.style.display = 'block';
+
+    if (role === 'admin') {
+  inventario.style.display = 'block';
+  btnInventario.style.display = 'inline-block';
+} else {
+  inventario.style.display = 'none';
+  btnInventario.style.display = 'none';
+}
+
+  } else {
+    authIcon.textContent = '🔐';
+    authText.textContent = 'Iniciar sesión';
+
+    if (botonCarrito) botonCarrito.style.display = 'none';
+
+    inventario.style.display = 'none';
+    btnInventario.style.display = 'none';
+    profileMenu.style.display = 'none';
+  }
+}
+
+
+
+
+
+document.getElementById('logout-btn').onclick = () => {
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('userRole');
+  actualizarEstadoUI();
+  resetRecaptchaAll();
+  document.getElementById('login-feedback').textContent = '';
+  document.getElementById('login-password').value = '';
+};
+
+
+
+    // ----------------------------------------------------------------------
+    // EJECUCIÓN AL CARGAR EL DOCUMENTO
+    // ----------------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', () => {
+  
+  verificarEstadoLogin(); 
+  actualizarEstadoUI();
+
+
+  // BOTONES DEL MODAL
+  document.getElementById('login-btn').addEventListener('click', manejarLogin);
+  document.getElementById('register-btn').addEventListener('click', manejarRegistro);
+  document.getElementById('verify-btn').addEventListener('click', manejarVerificacion);
+  document.getElementById('resend-code-btn').addEventListener('click', reenviarCodigo);
+  document.getElementById('narrador-btn').addEventListener('click', toggleNarrador);
+  document.getElementById('btn-chat-toggle').addEventListener('click', toggleChatPanel);
+  document.getElementById('close-chat').addEventListener('click', cerrarChat);
+  document.getElementById('chat-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const input = document.getElementById('chat-input');
+    enviarMensajeChat(input.value);
+    input.value = '';
+  });
+  document.addEventListener('focusin', handleFocusRead);
+
+  // FORMULARIO DE CONTACTO (ESTE SÍ EXISTE)
+  document.getElementById('formulario-contacto')
+    .addEventListener('submit', enviarFormularioContacto);
+
+  // MODAL
+  const authModal = document.getElementById('auth-modal');
+
+  document.getElementById('btn-auth').onclick = () => {
+  const token = localStorage.getItem('userToken');
+
+  if (!token) {
+    // NO hay sesión → abrir login
+    authModal.classList.add('active');
+    authModal.setAttribute('aria-hidden', 'false');
+    authModal.focus();
+    resetRecaptcha(loginRecaptchaId);
+  } else {
+    // SÍ hay sesión → abrir menú de perfil
+    toggleProfileMenu();
+  }
+};
+
+function toggleProfileMenu() {
+  const menu = document.getElementById('profile-menu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+  document.getElementById('close-auth').onclick = () => {
+    authModal.classList.remove('active');
+    authModal.setAttribute('aria-hidden', 'true');
+  };
+
+  document.getElementById('go-register').onclick = () => {
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('register-panel').style.display = 'block';
+    document.getElementById('verification-panel').style.display = 'none';
+    resetRecaptcha(registerRecaptchaId);
+  };
+
+  document.getElementById('go-login').onclick = () => {
+    document.getElementById('register-panel').style.display = 'none';
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('verification-panel').style.display = 'none';
+    resetRecaptcha(loginRecaptchaId);
+  };
+});
+
+
+    // Script carrusel
+    let index = 0;
+    const slides = document.querySelector('.slides');
+    const total = slides.children.length;
+
+    setInterval(() => {
+      index = (index + 1) % total;
+      if (slides) { 
+          slides.style.transform = `translateX(-${index * 100}%)`;
+      }
+    }, 3000);
+function actualizarBotonAuth() {
+  const token = localStorage.getItem('userToken');
+  
+
+  const icon = document.getElementById('auth-icon');
+  const text = document.getElementById('auth-text');
+//comentario
+  if (token ) {
+    icon.textContent = '👤';
+    text.textContent = `Bienvenido`;
+  } else {
+    icon.textContent = '🔐';
+    text.textContent = 'Iniciar sesión';
+  }
+}
+
+let carrito = [];
+
+function toggleCarrito() {
+  const panel = document.getElementById("carrito-panel");
+  panel.classList.toggle("active");
+}
+
+
+function agregarAlCarrito(modelo, precio, imagen) {
+  if (!Array.isArray(carrito)) {
+    carrito = [];
+  }
+
+  carrito.push({
+    modelo,
+    precio,
+    imagen,
+    cantidad: 1
+  });
+
+  actualizarCarrito();
+
+  fetch(`${API_BASE_URL}/carrito`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Email": localStorage.getItem("userEmail")
+    },
+    body: JSON.stringify({
+      modelo,
+      precio,
+      imagen,
+      cantidad: 1
+    })
+  });
+}
+
+
+
+function actualizarCarrito() {
+  const lista = document.getElementById("lista-carrito");
+  const totalTexto = document.getElementById("total-carrito");
+  const contador = document.getElementById("contador-carrito");
+
+  lista.innerHTML = "";
+  let total = 0;
+
+  carrito.forEach(item => {
+    const li = document.createElement("li");
+li.style.display = "flex";
+li.style.alignItems = "center";
+li.style.marginBottom = "10px";
+
+const img = document.createElement("img");
+img.src = item.imagen;
+img.style.width = "60px";
+img.style.borderRadius = "6px";
+img.style.marginRight = "10px";
+
+const texto = document.createElement("span");
+texto.textContent = `${item.modelo} - $${item.precio.toLocaleString()}`;
+
+li.appendChild(img);
+li.appendChild(texto);
+lista.appendChild(li);
+
+    total += item.precio;
+  });
+
+  contador.textContent = carrito.length;
+  totalTexto.textContent = `Total: $${total.toLocaleString()}`;
+}
+
+function vaciarCarrito() {
+  carrito = [];
+  actualizarCarrito();
+
+  fetch(`${API_BASE_URL}/carrito`, {
+    method: "DELETE",
+    headers: {
+      "X-User-Email": localStorage.getItem("userEmail")
+    }
+  });
+}
+
+/* ===== CHECKOUT ===== */
+
+function abrirCheckout() {
+  if (carrito.length === 0) {
+    alert("Tu carrito está vacío");
+    speak('Tu carrito está vacío. Agrega una motocicleta para continuar.');
+    return;
+  }
+  const checkoutModal = document.getElementById("checkout-modal");
+  checkoutModal.classList.add("active");
+  checkoutModal.setAttribute("aria-hidden", "false");
+  checkoutModal.focus();
+  speak('Checkout abierto. Ingresa tu información personal y método de pago.');
+}
+
+function cerrarCheckout() {
+  const checkoutModal = document.getElementById("checkout-modal");
+  checkoutModal.classList.remove("active");
+  checkoutModal.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("checkout-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  cerrarCheckout(); // cierra datos personales
+  abrirPago();      // abre método de pago
+});
+/* ===== PASO 5 – ABRIR PAGO SEGÚN MÉTODO ===== */
+
+function abrirPago() {
+  const metodo = document.querySelector('#checkout-form select').value;
+  const campos = document.getElementById("campos-pago");
+  const titulo = document.getElementById("titulo-pago");
+
+  if (!metodo) {
+    alert("Selecciona un método de pago");
+    speak('Selecciona un método de pago antes de continuar.');
+    return;
+  }
+
+  campos.innerHTML = "";
+  titulo.textContent = `Pago con ${metodo}`;
+
+  if (metodo === "Tarjeta") {
+    campos.innerHTML = `
+      <label>Número de tarjeta</label>
+      <input required placeholder="1234 5678 9012 3456">
+
+      <label>Fecha</label>
+      <input required placeholder="MM/AA">
+
+      <label>CVV</label>
+      <input required placeholder="123">
+    `;
+  }
+
+  if (metodo === "Transferencia") {
+    campos.innerHTML = `
+      <p>CLABE: <b>012345678901234567</b></p>
+      <p>Banco: BBVA</p>
+    `;
+  }
+
+  if (metodo === "Efectivo") {
+    campos.innerHTML = `
+      <p>Código de pago:</p>
+      <h3>${Math.floor(Math.random() * 900000) + 100000}</h3>
+    `;
+  }
+
+  const pagoModal = document.getElementById("pago-modal");
+  pagoModal.classList.add("active");
+  pagoModal.setAttribute("aria-hidden", "false");
+  pagoModal.focus();
+  speak(`Método de pago ${metodo} seleccionado.`);
+}
+
+function cerrarPago() {
+  const pagoModal = document.getElementById("pago-modal");
+  pagoModal.classList.remove("active");
+  pagoModal.setAttribute("aria-hidden", "true");
+}
+
+function cerrarResultado() {
+  const resultadoModal = document.getElementById("resultado-modal");
+  resultadoModal.classList.remove("active");
+  resultadoModal.setAttribute("aria-hidden", "true");
+}
+
+/* ===== PASO 6 – PROCESAR PAGO ===== */
+
+document.getElementById("pago-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  cerrarPago(); // cerrar modal de pago
+
+  const aprobado = Math.random() > 0.3; // 70% éxito
+
+  const modal = document.getElementById("resultado-modal");
+  const texto = document.getElementById("resultado-texto");
+  const icono = document.getElementById("icono-resultado");
+
+  if (aprobado) {
+    texto.textContent = "Pago aprobado 🎉";
+    icono.textContent = "✅";
+    vaciarCarrito();
+  } else {
+    texto.textContent = "Pago rechazado ❌";
+    icono.textContent = "⚠️";
+  }
+
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  modal.focus();
+
+  setTimeout(() => {
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+  }, 3000);
+});
+
+
+document.addEventListener('click', function (event) {
+  const carritoPanel = document.getElementById('carrito-panel');
+  const botonCarrito = document.querySelector('.btn-carrito');
+
+  if (!carritoPanel.classList.contains('active')) return;
+
+
+  // Si el click fue dentro del carrito, NO cerrar
+  if (carritoPanel.contains(event.target)) return;
+
+  // Si el click fue en el botón carrito, NO cerrar
+  if (botonCarrito.contains(event.target)) return;
+
+  carritoPanel.classList.remove('active');
+
+});
+
+function cerrarSesion() {
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('userRole');
+  actualizarEstadoUI();
+}
+
+document.getElementById('form-moto').addEventListener('submit', guardarMoto);
+
+async function guardarMoto(e) {
+  e.preventDefault();
+
+  const id = document.getElementById('moto-id').value;
+  const role = localStorage.getItem('userRole');
+
+  if (role !== 'admin') return alert('No autorizado');
+
+  const moto = {
+    modelo: document.getElementById('modelo').value,
+    marca: document.getElementById('marca').value,
+    cilindraje: document.getElementById('cilindraje').value,
+    disponibles: Number(document.getElementById('disponibles').value),
+    precio: Number(document.getElementById('precio').value),
+  };
+
+  const url = id
+    ? `${API_BASE_URL}/inventario/${id}`
+    : `${API_BASE_URL}/inventario`;
+
+  const method = id ? 'PUT' : 'POST';
+
+  await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Role': 'admin'
+    },
+    body: JSON.stringify(moto)
+  });
+
+  document.getElementById('form-moto').reset();
+  document.getElementById('moto-id').value = '';
+
+  cargarInventario();
+}
+
+function editarMoto(id) {
+  fetch(`${API_BASE_URL}/inventario`, {
+    headers: { 'X-User-Role': 'admin' }
+  })
+    .then(res => res.json())
+    .then(inventario => {
+      const moto = inventario.find(m => m.id === id);
+
+      document.getElementById('moto-id').value = moto.id;
+      document.getElementById('modelo').value = moto.modelo;
+      document.getElementById('marca').value = moto.marca;
+      document.getElementById('cilindraje').value = moto.cilindraje;
+      document.getElementById('disponibles').value = moto.disponibles;
+      document.getElementById('precio').value = moto.precio;
+    });
+}
+
+
+async function eliminarMoto(id) {
+  const confirmar = confirm("¿Seguro que deseas eliminar esta moto?");
+  if (!confirmar) return;
+
+  const role = localStorage.getItem("userRole");
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/inventario/${id}`, {
+      method: "DELETE",
+      headers: {
+        "X-User-Role": role
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.mensaje || "Error al eliminar");
+      return;
+    }
+
+    alert("Moto eliminada correctamente");
+    cargarInventario(); // 🔄 refresca tabla
+
+  } catch (error) {
+    console.error("Error al eliminar:", error);
+    alert("Error de conexión");
+  }
+}
+
+async function cargarUsuarios() {
+  const role = localStorage.getItem('userRole');
+  const tablaBody = document.getElementById('usuarios-body');
+
+  if (!tablaBody) return;
+  if (role !== 'admin') return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/usuarios`, {
+      headers: {
+        "X-User-Role": role
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("No autorizado");
+    }
+
+    const usuarios = await response.json();
+    tablaBody.innerHTML = "";
+
+usuarios.forEach(usuario => {
+  const row = tablaBody.insertRow();
+
+  row.insertCell(0).textContent = usuario.email;
+  row.insertCell(1).textContent = usuario.role;
+
+  const acciones = row.insertCell(2);
+  acciones.innerHTML = `
+    <button onclick="cambiarRol('${usuario.email}')">🔄</button>
+    <button onclick="eliminarUsuario('${usuario.email}')">🗑️</button>
+  `;
+});
+
+
+  } catch (error) {
+    console.error("Error al cargar usuarios:", error);
+    tablaBody.innerHTML =
+      `<tr><td colspan="2">Error al cargar usuarios</td></tr>`;
+  }
+}
+
+async function eliminarUsuario(email) {
+  if (!confirm("¿Eliminar usuario?")) return;
+
+  await fetch(`${API_BASE_URL}/usuarios/${email}`, {
+    method: "DELETE",
+    headers: { "X-User-Role": "admin" }
+  });
+
+  cargarUsuarios();
+}
+
+async function cambiarRol(email) {
+  const nuevoRol = prompt("Nuevo rol (admin/user):");
+
+  if (!nuevoRol) return;
+
+  await fetch(`${API_BASE_URL}/usuarios/${email}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Role": "admin"
+    },
+    body: JSON.stringify({ role: nuevoRol })
+  });
+
+  cargarUsuarios();
+}
+
+async function buscarConcesionariasOSM(lat, lng, radioMetros = 5000) {
+
+  const query = `
+    [out:json];
+    (
+      node["shop"="motorcycle"](around:${radioMetros},${lat},${lng});
+      node["amenity"="motorcycle_dealer"](around:${radioMetros},${lat},${lng});
+      node["shop"="motorcycle_repair"](around:${radioMetros},${lat},${lng});
+    );
+    out;
+  `;
+
+  const url = "https://overpass-api.de/api/interpreter";
+
+  const response = await fetch(url, {
+    method: "POST",
+    body: query
+  });
+
+  const data = await response.json();
+  return data.elements;
+}
+let mapa;
+let marcadores = [];
+
+function limpiarMarcadores() {
+  marcadores.forEach(m => mapa.removeLayer(m));
+  marcadores = [];
+}
+
+async function iniciarMapa(lat, lng) {
+
+  if (!mapa) {
+    mapa = L.map('mapa').setView([lat, lng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapa);
+  }
+
+  limpiarMarcadores();
+
+  // Marcador usuario
+  const userMarker = L.marker([lat, lng])
+    .addTo(mapa)
+    .bindPopup("Tu ubicación")
+    .openPopup();
+
+  marcadores.push(userMarker);
+
+  const concesionarias = await buscarConcesionariasOSM(lat, lng, 10000); // 10 km
+
+  if (concesionarias.length === 0) {
+    alert("No se encontraron concesionarias cercanas");
+    return;
+  }
+
+  concesionarias.forEach(c => {
+    const nombre = c.tags.name || "Concesionaria de motos";
+    const marker = L.marker([c.lat, c.lon])
+      .addTo(mapa)
+      .bindPopup(nombre);
+
+    marcadores.push(marker);
+  });
+}
+
+navigator.geolocation.getCurrentPosition(
+  pos => iniciarMapa(pos.coords.latitude, pos.coords.longitude),
+  () => iniciarMapa(19.3576, -99.0721)
+);
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") {
+    cerrarCatalogo();
+    cerrarContacto();
+    cerrarQuienes();
+    cerrarModal();
+    cerrarCheckout();
+    cerrarPago();
+    cerrarResultado();
+  }
+});
+
+document.getElementById("catalogo").addEventListener("click", function(e){
+  if (e.target.id === "catalogo") {
+    cerrarCatalogo();
+  }
+});
+
+
+</script>
+
+<!-- Modal -->
+<div id="modalMoto" class="modal" role="dialog" aria-labelledby="modalModelo" aria-modal="true" aria-hidden="true" tabindex="-1">
+  <div class="modal-contenido">
+    <button type="button" class="cerrar" onclick="cerrarModal()" aria-label="Cerrar detalles de moto">&times;</button>
+    <h2 id="modalModelo"></h2>
+    <p><strong>Marca:</strong> <span id="modalMarca"></span></p>
+    <p><strong>Cilindraje:</strong> <span id="modalCilindraje"></span></p>
+    <p><strong>Disponibles:</strong> <span id="modalDisponibles"></span></p>
+    <p><strong>Precio:</strong> $<span id="modalPrecio"></span></p>
+  </div>
+</div>
+
+<script>
+function abrirModal(moto) {
+  document.getElementById("modalModelo").innerText = moto.modelo;
+  document.getElementById("modalMarca").innerText = moto.marca;
+  document.getElementById("modalCilindraje").innerText = moto.cilindraje;
+  document.getElementById("modalDisponibles").innerText = moto.disponibles;
+  document.getElementById("modalPrecio").innerText = moto.precio;
+
+  const modalMoto = document.getElementById("modalMoto");
+  modalMoto.style.display = "flex";
+  modalMoto.setAttribute("aria-hidden", "false");
+  modalMoto.focus();
+  speak(`Detalles de ${moto.modelo}`);
+}
+
+function cerrarModal() {
+  const modalMoto = document.getElementById("modalMoto");
+  modalMoto.style.display = "none";
+  modalMoto.setAttribute("aria-hidden", "true");
+}
+
+function abrirCatalogo() {
+  const catalogo = document.getElementById("catalogo");
+  catalogo.classList.add("active");
+  catalogo.setAttribute("aria-hidden", "false");
+  catalogo.focus();
+  document.body.style.overflow = "hidden"; // 🔥 bloquea scroll
+  speak('Catálogo abierto. Usa tab para navegar entre las motocicletas.');
+}
+
+function cerrarCatalogo() {
+  const catalogo = document.getElementById("catalogo");
+  catalogo.classList.remove("active");
+  catalogo.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "auto";
+  speak('Catálogo cerrado.');
+}
+
+function abrirContacto() {
+  const contacto = document.getElementById("contacto");
+  contacto.classList.add("active");
+  contacto.setAttribute("aria-hidden", "false");
+  contacto.focus();
+  document.body.style.overflow = "hidden";
+  speak('Formulario de contacto abierto. Completa tu nombre, correo y mensaje.');
+}
+
+function cerrarContacto() {
+  const contacto = document.getElementById("contacto");
+  contacto.classList.remove("active");
+  contacto.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "auto";
+  speak('Contacto cerrado.');
+}
+
+function abrirQuienes() {
+  const quienes = document.getElementById("quienes");
+  quienes.classList.add("active");
+  quienes.setAttribute("aria-hidden", "false");
+  quienes.focus();
+  document.body.style.overflow = "hidden";
+  speak('Quiénes somos abierto. Esta sección describe a la empresa y valores.');
+}
+
+function cerrarQuienes() {
+  const quienes = document.getElementById("quienes");
+  quienes.classList.remove("active");
+  quienes.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "auto";
+  speak('Quiénes somos cerrado.');
+}
+
+function mostrarQuienesSomos(){
+    var seccion = document.getElementById("quienesSomos");
+
+    if(seccion.style.display === "none"){
+        seccion.style.display = "flex";
+    }else{
+        seccion.style.display = "none";
+    }
+}
+
+paypal.Buttons({
+
+  createOrder: function(data, actions) {
+
+    let total = 0;
+
+    carrito.forEach(item => {
+      total += item.precio;
+    });
+
+    return actions.order.create({
+      purchase_units: [{
+        amount: {
+          value: total.toFixed(2)
+        }
+      }]
+    });
+  },
+
+  onApprove: function(data, actions) {
+    return actions.order.capture().then(function(details) {
+
+      alert("Pago completado por " + details.payer.name.given_name);
+
+      vaciarCarrito();
+      actualizarCarrito();
+
+    });
+  }
+
+}).render('#paypal-button-container');
+
+</script>
+
+
+
+</body>
+</html>

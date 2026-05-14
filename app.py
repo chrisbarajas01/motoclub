@@ -50,6 +50,13 @@ EMAIL_SENDER = os.environ.get('EMAIL_SENDER', 'TU_CORREO@gmail.com')
 EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', 'TU_PASSWORD_APP')
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+DISABLE_EMAIL = os.environ.get('DISABLE_EMAIL', 'false').lower() in ('1', 'true', 'yes')
+EMAIL_CONFIGURED = EMAIL_SENDER != 'TU_CORREO@gmail.com' and EMAIL_PASSWORD != 'TU_PASSWORD_APP'
+
+# Si no hay configuración de email, habilitamos el modo de desarrollo para que el registro
+# funcione sin bloquearse en el envío de correo.
+if not EMAIL_CONFIGURED:
+    DISABLE_EMAIL = True
 
 
 def generar_codigo_verificacion():
@@ -57,15 +64,20 @@ def generar_codigo_verificacion():
 
 
 def enviar_correo_verificacion(destinatario, codigo):
+    if DISABLE_EMAIL:
+        print(f"EMAIL DESHABILITADO: Código de verificación para {destinatario}: {codigo}")
+        return True
+    
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
         raise RuntimeError('No hay credenciales SMTP configuradas.')
 
-    mensaje = EmailMessage()
-    mensaje['Subject'] = 'Verificación de cuenta MotoPower'
-    mensaje['From'] = EMAIL_SENDER
-    mensaje['To'] = destinatario
-    mensaje.set_content(
-        f"""Hola,
+    try:
+        mensaje = EmailMessage()
+        mensaje['Subject'] = 'Verificación de cuenta MotoPower'
+        mensaje['From'] = EMAIL_SENDER
+        mensaje['To'] = destinatario
+        mensaje.set_content(
+            f"""Hola,
 
 Gracias por registrarte en MotoPower.
 
@@ -78,23 +90,34 @@ Si no solicitaste este registro, ignora este mensaje.
 Saludos,
 MotoPower
 """
-    )
+        )
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        smtp.send_message(mensaje)
+        # Timeout de 10 segundos para el envío
+        import socket
+        socket.setdefaulttimeout(10)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            smtp.send_message(mensaje)
+    except smtplib.SMTPException as e:
+        raise RuntimeError(f'Error SMTP: {str(e)}')
+    except socket.timeout:
+        raise RuntimeError('Timeout al conectar con el servidor de email')
+    except Exception as e:
+        raise RuntimeError(f'Error al enviar email: {str(e)}')
 
 
 def crear_usuario_no_verificado(email, password):
     codigo = generar_codigo_verificacion()
-    USUARIOS[email] = {
+    usuario = {
         'password': password,
         'role': 'user',
         'carrito': [],
-        'verified': False,
-        'verification_code': codigo
+        'verified': DISABLE_EMAIL,
+        'verification_code': None if DISABLE_EMAIL else codigo
     }
+    USUARIOS[email] = usuario
     return codigo
 
 
@@ -109,15 +132,20 @@ def guardar_codigo_login(email):
 
 
 def enviar_correo_codigo_login(destinatario, codigo):
+    if DISABLE_EMAIL:
+        print(f"EMAIL DESHABILITADO: Código de login para {destinatario}: {codigo}")
+        return True
+    
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
         raise RuntimeError('No hay credenciales SMTP configuradas.')
 
-    mensaje = EmailMessage()
-    mensaje['Subject'] = 'Código temporal de acceso MotoPower'
-    mensaje['From'] = EMAIL_SENDER
-    mensaje['To'] = destinatario
-    mensaje.set_content(
-        f"""Hola,
+    try:
+        mensaje = EmailMessage()
+        mensaje['Subject'] = 'Código temporal de acceso MotoPower'
+        mensaje['From'] = EMAIL_SENDER
+        mensaje['To'] = destinatario
+        mensaje.set_content(
+            f"""Hola,
 
 Has solicitado iniciar sesión en MotoPower.
 
@@ -130,12 +158,22 @@ Si no fuiste tú, ignora este mensaje.
 Saludos,
 MotoPower
 """
-    )
+        )
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        smtp.send_message(mensaje)
+        # Timeout de 10 segundos para el envío
+        import socket
+        socket.setdefaulttimeout(10)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            smtp.send_message(mensaje)
+    except smtplib.SMTPException as e:
+        raise RuntimeError(f'Error SMTP: {str(e)}')
+    except socket.timeout:
+        raise RuntimeError('Timeout al conectar con el servidor de email')
+    except Exception as e:
+        raise RuntimeError(f'Error al enviar email: {str(e)}')
 
 
 
@@ -361,16 +399,23 @@ def register_usuario():
     codigo = crear_usuario_no_verificado(email, password)
 
     try:
+        print(f"Enviando email de verificación a {email}...")
         enviar_correo_verificacion(email, codigo)
+        print(f"Email enviado exitosamente a {email}")
     except Exception as error:
+        print(f"Error al enviar email a {email}: {error}")
         USUARIOS.pop(email, None)
         return jsonify({
-            "mensaje": "No se pudo enviar el correo de verificación. Revisa la configuración de Gmail.",
+            "mensaje": "No se pudo enviar el correo de verificación. Verifica la configuración de email.",
             "error": str(error)
         }), 500
 
+    mensaje = "Registro exitoso. Revisa tu correo para verificar tu cuenta."
+    if DISABLE_EMAIL:
+        mensaje = "Registro exitoso. Cuenta verificada automáticamente en modo desarrollo."
+
     return jsonify({
-        "mensaje": "Registro exitoso. Revisa tu correo para verificar tu cuenta."
+        "mensaje": mensaje
     }), 201
 
 
@@ -698,7 +743,11 @@ def vaciar_carrito():
 
 @app.route('/')
 def index():
-    return render_template('index.html', recaptcha_site_key=RECAPTCHA_SITE_KEY)
+    return render_template(
+        'index.html',
+        recaptcha_site_key=RECAPTCHA_SITE_KEY,
+        recaptcha_disabled=RECAPTCHA_DISABLED
+    )
 # =========================================================================
 # INICIO DEL SERVIDOR
 # =========================================================================

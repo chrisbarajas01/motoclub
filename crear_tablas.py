@@ -1,13 +1,13 @@
 import psycopg2
 
-# Tu URL de Render (basada en la imagen image_d81969.png)
+# Tu URL de Render
 DB_URL = "postgresql://motoclub_fr5u_user:0jpM3SOgBUgXjssRQU7MqDum301c8jaS@dpg-d82fv672gups73c46tc0-a.oregon-postgres.render.com/motoclub_fr5u"
 
 def crear_base_de_datos():
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
-        
+
         tablas_sql = """
         CREATE TABLE IF NOT EXISTS brands (
             id SERIAL PRIMARY KEY,

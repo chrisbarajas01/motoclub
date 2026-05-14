@@ -463,6 +463,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     
     // URL de la API relativa para que el chat funcione desde el mismo backend
     const API_BASE_URL = '/api';
+    const RECAPTCHA_DISABLED = {{ 'true' if recaptcha_disabled else 'false' }};
 
     let narratorEnabled = false;
     let pendingVerificationEmail = null;
@@ -613,6 +614,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let pendingLoginEmail = '';
 
     function onRecaptchaLoad() {
+      if (RECAPTCHA_DISABLED) {
+        const loginContainer = document.getElementById('login-recaptcha');
+        const registerContainer = document.getElementById('register-recaptcha');
+        if (loginContainer) {
+          loginContainer.innerHTML = '<p style="color: #444;">reCAPTCHA deshabilitado para desarrollo.</p>';
+        }
+        if (registerContainer) {
+          registerContainer.innerHTML = '<p style="color: #444;">reCAPTCHA deshabilitado para desarrollo.</p>';
+        }
+        return;
+      }
+
       if (document.getElementById('login-recaptcha')) {
         loginRecaptchaId = grecaptcha.render('login-recaptcha', {
           sitekey: '{{ recaptcha_site_key }}'
@@ -648,18 +661,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
 
     async function requestJson(url, options) {
-      const response = await fetch(url, options);
-      let data;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
       try {
-        data = await response.json();
-      } catch (err) {
-        const text = await response.text();
-        throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (err) {
+          const text = await response.text();
+          throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+        }
+        if (!response.ok) {
+          throw new Error(data.mensaje || JSON.stringify(data) || `HTTP ${response.status}`);
+        }
+        return data;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('La solicitud tardó demasiado. Revisa tu conexión a internet.');
+        }
+        throw error;
       }
-      if (!response.ok) {
-        throw new Error(data.mensaje || JSON.stringify(data) || `HTTP ${response.status}`);
-      }
-      return data;
     }
 
     async function manejarRegistro(event) {
@@ -668,7 +697,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const url = `${API_BASE_URL}/register`;
         const feedback = document.getElementById('register-feedback');
         
-        const recaptchaToken = getRecaptchaResponse(registerRecaptchaId);
+        const recaptchaToken = RECAPTCHA_DISABLED ? 'disabled' : getRecaptchaResponse(registerRecaptchaId);
         if (!recaptchaToken) {
             feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
             feedback.style.color = 'red';
@@ -707,6 +736,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             console.error('Error de conexión al intentar registrar:', error);
             feedback.textContent = error.message || 'Error de conexión con el servidor.';
             feedback.style.color = 'red';
+            // Resetear el estado si hay error
+            feedback.textContent = 'Error: ' + (error.message || 'Error de conexión con el servidor.');
         }
     }
 
@@ -778,7 +809,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const url = `${API_BASE_URL}/login`;
       const feedback = document.getElementById('login-feedback');
 
-      const recaptchaToken = getRecaptchaResponse(loginRecaptchaId);
+      const recaptchaToken = RECAPTCHA_DISABLED ? 'disabled' : getRecaptchaResponse(loginRecaptchaId);
       if (!recaptchaToken) {
         feedback.textContent = 'Completa el CAPTCHA antes de continuar.';
         feedback.style.color = 'red';

@@ -647,6 +647,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       resetRecaptcha(registerRecaptchaId);
     }
 
+    async function requestJson(url, options) {
+      const response = await fetch(url, options);
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+      }
+      if (!response.ok) {
+        throw new Error(data.mensaje || JSON.stringify(data) || `HTTP ${response.status}`);
+      }
+      return data;
+    }
+
     async function manejarRegistro(event) {
         event.preventDefault();
 
@@ -670,27 +685,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         feedback.style.color = 'gray';
 
         try {
-            const response = await fetch(url, {
+            const resultado = await requestJson(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(datosRegistro)
             });
 
-            const resultado = await response.json();
-            
             feedback.textContent = resultado.mensaje;
-            feedback.style.color = response.ok ? 'green' : 'red';
+            feedback.style.color = 'green';
             
-            if (response.ok) {
-               const email = datosRegistro.email.trim().toLowerCase();
-               pendingVerificationEmail = email;
-               document.getElementById('register-email').value = '';
-               document.getElementById('register-password').value = '';
-               resetRecaptcha(registerRecaptchaId);
-               document.getElementById('verification-panel').style.display = 'block';
-               document.getElementById('verify-feedback').textContent = 'Te enviamos un código a tu correo. Úsalo para verificar tu cuenta.';
-               document.getElementById('verify-feedback').style.color = 'green';
-            }
+            const email = datosRegistro.email.trim().toLowerCase();
+            pendingVerificationEmail = email;
+            document.getElementById('register-email').value = '';
+            document.getElementById('register-password').value = '';
+            resetRecaptcha(registerRecaptchaId);
+            document.getElementById('verification-panel').style.display = 'block';
+            document.getElementById('verify-feedback').textContent = 'Te enviamos un código a tu correo. Úsalo para verificar tu cuenta.';
+            document.getElementById('verify-feedback').style.color = 'green';
 
         } catch (error) {
             console.error('Error de conexión al intentar registrar:', error);
@@ -715,15 +726,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         feedback.style.color = 'gray';
 
         try {
-            const response = await fetch(`${API_BASE_URL}/verify-email`, {
+            const resultado = await requestJson(`${API_BASE_URL}/verify-email`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({email, code})
             });
-
-            const resultado = await response.json();
             feedback.textContent = resultado.mensaje;
-            feedback.style.color = response.ok ? 'green' : 'red';
+            feedback.style.color = 'green';
 
             if (response.ok) {
                 document.getElementById('verification-code').value = '';
@@ -751,14 +760,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         feedback.style.color = 'gray';
 
         try {
-            const response = await fetch(`${API_BASE_URL}/resend-verification`, {
+            const resultado = await requestJson(`${API_BASE_URL}/resend-verification`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({email})
             });
-            const resultado = await response.json();
             feedback.textContent = resultado.mensaje;
-            feedback.style.color = response.ok ? 'green' : 'red';
+            feedback.style.color = 'green';
         } catch (error) {
             console.error('Error al reenviar código:', error);
             feedback.textContent = 'Error de conexión con el servidor.';
@@ -789,13 +797,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       feedback.style.color = 'gray';
 
       try {
-        const response = await fetch(url, {
+        const resultado = await requestJson(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(datosLogin)
         });
-
-        const resultado = await response.json();
         console.log("LOGIN BACKEND RESPONSE:", resultado);
 
         if (response.ok && resultado.requiresVerification) {
@@ -852,15 +858,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       feedback.style.color = 'gray';
 
       try {
-        const response = await fetch(`${API_BASE_URL}/login-verify-code`, {
+        const resultado = await requestJson(`${API_BASE_URL}/login-verify-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, code })
         });
 
-        const resultado = await response.json();
-
-        if (response.ok && resultado.token) {
+        if (resultado.token) {
           feedback.textContent = '¡Inicio de sesión completado!';
           feedback.style.color = 'green';
 
@@ -877,6 +881,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             document.getElementById('login-code').value = '';
             document.getElementById('login-verification-panel').style.display = 'none';
             document.getElementById('login-panel').style.display = 'block';
+            pendingLoginEmail = '';
           }, 800);
         } else {
           feedback.textContent = resultado.mensaje || 'Código inválido';
@@ -904,15 +909,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       feedback.style.color = 'gray';
 
       try {
-        const response = await fetch(`${API_BASE_URL}/login-resend-code`, {
+        const resultado = await requestJson(`${API_BASE_URL}/login-resend-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
 
-        const resultado = await response.json();
         feedback.textContent = resultado.mensaje;
-        feedback.style.color = response.ok ? 'green' : 'red';
+        feedback.style.color = 'green';
       } catch (error) {
         console.error('Error al reenviar código:', error);
         feedback.textContent = 'Error de conexión con el servidor';
@@ -1085,6 +1089,7 @@ document.getElementById('logout-btn').onclick = () => {
   document.getElementById('login-verify-btn').addEventListener('click', manejarLoginVerificacion);
   document.getElementById('login-resend-btn').addEventListener('click', reenviarCodigoLogin);
   document.getElementById('login-back-btn').addEventListener('click', () => {
+    pendingLoginEmail = '';
     document.getElementById('login-verification-panel').style.display = 'none';
     document.getElementById('login-panel').style.display = 'block';
     document.getElementById('login-verification-feedback').textContent = '';

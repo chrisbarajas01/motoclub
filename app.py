@@ -20,6 +20,7 @@ CORS(app)
 # reCAPTCHA keys: cambia estos valores o configúralos en variables de entorno.
 RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '6LeMxeIsAAAAABVGu_f_1NPeM2KOVCT6BwbFHZ-4')
 RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '6LeMxeIsAAAAAOfJLqZbOgPDRRzZ8XxyehMA9rvG')
+RECAPTCHA_DISABLED = os.environ.get('DISABLE_RECAPTCHA', 'false').lower() in ('1', 'true', 'yes')
 
 # =========================================================================
 # BASES DE DATOS FALSAS (EN MEMORIA)
@@ -296,6 +297,9 @@ def es_admin(request):
 MENSAJES = []
 
 def verificar_recaptcha(token, remote_ip=None):
+    if RECAPTCHA_DISABLED:
+        return True
+
     if not token or RECAPTCHA_SECRET_KEY == 'TU_SECRET_KEY_AQUI':
         return False
 

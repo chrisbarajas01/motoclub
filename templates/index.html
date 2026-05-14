@@ -705,7 +705,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         } catch (error) {
             console.error('Error de conexión al intentar registrar:', error);
-            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.textContent = error.message || 'Error de conexión con el servidor.';
             feedback.style.color = 'red';
         }
     }
@@ -734,13 +734,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             feedback.textContent = resultado.mensaje;
             feedback.style.color = 'green';
 
-            if (response.ok) {
-                document.getElementById('verification-code').value = '';
-                document.getElementById('verification-panel').style.display = 'none';
-            }
+            document.getElementById('verification-code').value = '';
+            document.getElementById('verification-panel').style.display = 'none';
         } catch (error) {
             console.error('Error al verificar:', error);
-            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.textContent = error.message || 'Error de conexión con el servidor.';
             feedback.style.color = 'red';
         }
     }
@@ -769,7 +767,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             feedback.style.color = 'green';
         } catch (error) {
             console.error('Error al reenviar código:', error);
-            feedback.textContent = 'Error de conexión con el servidor.';
+            feedback.textContent = error.message || 'Error de conexión con el servidor.';
             feedback.style.color = 'red';
         }
     }
@@ -804,7 +802,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         });
         console.log("LOGIN BACKEND RESPONSE:", resultado);
 
-        if (response.ok && resultado.requiresVerification) {
+        if (resultado.requiresVerification) {
           pendingLoginEmail = datosLogin.email;
           document.getElementById('login-panel').style.display = 'none';
           document.getElementById('login-verification-panel').style.display = 'block';
@@ -813,7 +811,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           return;
         }
 
-        if (response.ok && resultado.token) {
+        if (resultado.token) {
           feedback.textContent = '¡Inicio de sesión exitoso!';
           feedback.style.color = 'green';
 
@@ -836,7 +834,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       } catch (error) {
         console.error('Error de conexión:', error);
-        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.textContent = error.message || 'Error de conexión con el servidor';
         feedback.style.color = 'red';
       }
     }
@@ -889,7 +887,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
       } catch (error) {
         console.error('Error de conexión durante verificación:', error);
-        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.textContent = error.message || 'Error de conexión con el servidor';
         feedback.style.color = 'red';
       }
     }
@@ -919,7 +917,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         feedback.style.color = 'green';
       } catch (error) {
         console.error('Error al reenviar código:', error);
-        feedback.textContent = 'Error de conexión con el servidor';
+        feedback.textContent = error.message || 'Error de conexión con el servidor';
         feedback.style.color = 'red';
       }
     }
